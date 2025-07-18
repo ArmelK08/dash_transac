@@ -22,12 +22,12 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get("token")?.value;
 
   const isPublic = PUBLIC_PATHS.some(
-    (path: string) => pathname === path || pathname.startsWith(`${path}/`)
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
   );
 
   if (!token) {
     if (!isPublic) {
-      console.log("🚫 Pas de token → /login");
+      console.log("🚫 Pas de token → /auth/v2/login");
       return NextResponse.redirect(new URL("/auth/v2/login", req.url));
     }
     return NextResponse.next();
@@ -36,7 +36,10 @@ export async function middleware(req: NextRequest) {
   try {
     await verifyJWT(token);
 
-    if (isPublic || pathname === "/") {
+    if (
+      (isPublic || pathname === "/") &&
+      pathname !== "/dashboard/default"
+    ) {
       console.log("✅ Déjà connecté → /dashboard/default");
       return NextResponse.redirect(new URL("/dashboard/default", req.url));
     }
@@ -44,7 +47,6 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   } catch (err) {
     console.error("🚫 JWT invalide :", err);
-
     return NextResponse.redirect(new URL("/auth/v2/login", req.url));
   }
 }

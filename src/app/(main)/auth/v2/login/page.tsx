@@ -23,7 +23,7 @@ export default function LoginV2() {
       <div className="absolute top-5 flex w-full justify-end px-10">
         <div className="text-muted-foreground text-sm">
           Vous n&apos;avez pas de compte ?{" "}
-          <Link className="text-foreground" href="/register">
+          <Link className="text-foreground" href="register">
         Inscrivez-vous
           </Link>
         </div>
