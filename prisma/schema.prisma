@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model data_v2 {
+  id                      String   @id @map("_id") @db.LongText
+  status                  String?  @db.LongText
+  type                    String?  @db.LongText
+  feeamount               BigInt?
+  senderfirstname         String?  @db.LongText
+  senderlastname          String?  @db.LongText
+  sendermobilenumber      String?  @db.LongText
+  beneficiaryfirstname    String?  @db.LongText
+  beneficiarylastname     String?  @db.LongText
+  beneficiaryaddress      String?  @db.LongText
+  beneficiarymobilenumber String?  @db.LongText
+  fromcountry             String?  @db.LongText
+  tocountry               String?  @db.LongText
+  currency                String?  @db.LongText
+  amount                  BigInt?
+  state                   String?  @db.LongText
+  reference               String?  @db.LongText
+  statusdescription       String?  @db.LongText
+  orderid                 String?  @db.LongText
+  operator                String?  @db.LongText
+  partnercode             String?  @db.LongText
+  date                    String?  @db.LongText
+  serviceprovider         String?  @db.LongText
+  accounted               Boolean?
+  settled                 Boolean?
+  class                   String?  @map("_class") @db.LongText
+}

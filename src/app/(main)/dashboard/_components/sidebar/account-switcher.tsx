@@ -14,6 +14,8 @@ import {
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 import { cn, getInitials } from "@/lib/utils";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export function AccountSwitcher({
   users,
@@ -27,7 +29,21 @@ export function AccountSwitcher({
   }>;
 }) {
   const [activeUser, setActiveUser] = useState(users[0]);
-
+  const router = useRouter();
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("/api/logout", { method: "POST" });
+      if (res.ok) {
+        toast.success("Logged out successfully");
+        router.push("/auth/v2/login");
+      } else {
+        toast.error("Failed to log out");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Network error during logout");
+    }
+  };
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -55,26 +71,11 @@ export function AccountSwitcher({
             </div>
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem>
-            <BadgeCheck />
-            Account
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <CreditCard />
-            Billing
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Bell />
-            Notifications
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          <LogOut />
-          Log out
-        </DropdownMenuItem>
+       
+        <DropdownMenuItem onClick={handleLogout}>
+              <LogOut />
+              Log out
+            </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

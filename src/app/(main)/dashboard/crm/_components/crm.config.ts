@@ -1,6 +1,15 @@
 /* eslint-disable max-lines */
 
 import { ChartConfig } from "@/components/ui/chart";
+export type DataV2 = {
+  id: string;
+  date: string | null;
+  amount: number | null;
+  status: string | null;
+  type: string | null;
+  feeamount: number | null;
+};
+
 
 export const leadsChartData = [
   { date: "1-5", newLeads: 120, disqualified: 40 },

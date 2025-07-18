@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
-
-import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth/next";
 
 import { AppSidebar } from "@/app/(main)/dashboard/_components/sidebar/app-sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -19,10 +19,18 @@ import {
 
 import { AccountSwitcher } from "./_components/sidebar/account-switcher";
 import { LayoutControls } from "./_components/sidebar/layout-controls";
-import { SearchDialog } from "./_components/sidebar/search-dialog";
 import { ThemeSwitcher } from "./_components/sidebar/theme-switcher";
+import { cookies } from "next/headers";
+import { authOptions } from "../../../../pages/api/auth/[...nextauth]";
 
 export default async function Layout({ children }: Readonly<{ children: ReactNode }>) {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    redirect("auth/login");
+  }
+
+  // récupérer préférences + état sidebar
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
 
@@ -45,8 +53,6 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
         data-content-layout={contentLayout}
         className={cn(
           "data-[content-layout=centered]:!mx-auto data-[content-layout=centered]:max-w-screen-2xl",
-          // Adds right margin for inset sidebar in centered layout up to 113rem.
-          // On wider screens with collapsed sidebar, removes margin and sets margin auto for alignment.
           "max-[113rem]:peer-data-[variant=inset]:!mr-2 min-[101rem]:peer-data-[variant=inset]:peer-data-[state=collapsed]:!mr-auto",
         )}
       >
@@ -55,7 +61,6 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
             <div className="flex items-center gap-1 lg:gap-2">
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
-              <SearchDialog />
             </div>
             <div className="flex items-center gap-2">
               <LayoutControls {...layoutPreferences} />
