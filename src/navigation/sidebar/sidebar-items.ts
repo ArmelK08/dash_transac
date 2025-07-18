@@ -46,18 +46,18 @@ export interface NavGroup {
 export const sidebarItems: NavGroup[] = [
   {
     id: 1,
-    label: "Dashboards",
+    // label: "Dashboards",
     items: [
-      // {
-      //   title: "Default",
-      //   url: "/dashboard/default",
-      //   icon: LayoutDashboard,
-      // },
       {
-        title: "CRM",
-        url: "/dashboard/crm",
-        icon: ChartBar,
+        title: "Tableau de bord",
+        url: "/dashboard/default",
+        icon: LayoutDashboard,
       },
+      // {
+      //   title: "CRM",
+      //   url: "/dashboard",
+      //   icon: ChartBar,
+      // },
 
     ],
   },

@@ -1,34 +1,62 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import jwt from "jsonwebtoken";
+import { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
-const PUBLIC_PATHS = ["/", "/login", "/register", "/api/auth/login", "/api/auth/register"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/register",
+  "/auth/v2/login",
+  "/auth/v2/register",
+  "/api/auth/login",
+  "/api/auth/register",
+];
 
-export function middleware(req: NextRequest) {
+async function verifyJWT(token: string) {
+  const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+  return await jwtVerify(token, secret);
+}
+
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-
-  // Ne rien faire pour les pages publiques
-  if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
-    return NextResponse.next();
-  }
 
   const token = req.cookies.get("token")?.value;
 
+  const isPublic = PUBLIC_PATHS.some(
+    (path: string) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+
   if (!token) {
-    console.log("Pas de token trouvé, redirection vers /login");
-    return NextResponse.redirect(new URL("/login", req.url));
+    if (!isPublic) {
+      console.log("🚫 Pas de token → /login");
+      return NextResponse.redirect(new URL("/auth/v2/login", req.url));
+    }
+    return NextResponse.next();
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    // Tu pourrais même injecter decoded dans une header pour tes API si besoin
+    await verifyJWT(token);
+
+    if (isPublic || pathname === "/") {
+      console.log("✅ Déjà connecté → /dashboard/default");
+      return NextResponse.redirect(new URL("/dashboard/default", req.url));
+    }
+
     return NextResponse.next();
   } catch (err) {
-    console.error("JWT invalide", err);
-    return NextResponse.redirect(new URL("/login", req.url));
+    console.error("🚫 JWT invalide :", err);
+
+    return NextResponse.redirect(new URL("/auth/v2/login", req.url));
   }
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/api/protected/:path*"], // protège ces chemins
+  matcher: [
+    "/",
+    "/login",
+    "/register",
+    "/auth/v2/login",
+    "/auth/v2/register",
+    "/dashboard/:path*",
+    "/api/protected/:path*",
+  ],
 };

@@ -46,7 +46,7 @@ export function LoginForm() {
       }
 
       toast.success("Connexion réussie !");
-      router.push("/dashboard");
+      router.push("/dashboard/default");
     } catch (err) {
       console.error(err);
       toast.error("Erreur réseau ou serveur");

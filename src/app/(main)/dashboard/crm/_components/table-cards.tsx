@@ -55,10 +55,10 @@ export function TableCards() {
     <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:shadow-xs">
       <Card>
         <CardHeader>
-          <CardTitle>Recent Leads</CardTitle>
-          <CardDescription>
-            Track and manage your latest leads and their status.
-          </CardDescription>
+          <CardTitle>Transactions </CardTitle>
+            <CardDescription>
+            Suivez et gérez vos transactions et leur statut.
+            </CardDescription>
           <CardAction>
             <div className="flex items-center gap-2">
               <DataTableViewOptions table={table} />

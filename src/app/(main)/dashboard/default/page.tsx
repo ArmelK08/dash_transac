@@ -1,14 +1,22 @@
-import { ChartAreaInteractive } from "./_components/chart-area-interactive";
-import { DataTable } from "./_components/data-table";
-import data from "./_components/data.json";
-import { SectionCards } from "./_components/section-cards";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { OverviewCards } from "../crm/_components/overview-cards";
+import { TableCards } from "../crm/_components/table-cards";
 
-export default function Page() {
+
+
+export default async function DashboardPage() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token");
+
+  if (!token) {
+    redirect("/auth/v2/login");
+  }
+
   return (
     <div className="@container/main flex flex-col gap-4 md:gap-6">
-      <SectionCards />
-      <ChartAreaInteractive />
-      <DataTable data={data} />
+      <OverviewCards />
+      <TableCards />
     </div>
   );
 }
