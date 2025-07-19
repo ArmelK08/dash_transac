@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
+import jwt from "jsonwebtoken";
 
 import { AppSidebar } from "@/app/(main)/dashboard/_components/sidebar/app-sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -21,17 +21,24 @@ import { AccountSwitcher } from "./_components/sidebar/account-switcher";
 import { LayoutControls } from "./_components/sidebar/layout-controls";
 import { ThemeSwitcher } from "./_components/sidebar/theme-switcher";
 import { cookies } from "next/headers";
-import { authOptions } from "../../../../pages/api/auth/[...nextauth]";
 
-export default async function Layout({ children }: Readonly<{ children: ReactNode }>) {
-  const session = await getServerSession(authOptions);
+export default async function Layout({
+  children,
+}: Readonly<{ children: ReactNode }>) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("token")?.value;
 
-  if (!session) {
-    redirect("auth/login");
+  if (!token) {
+    redirect("/auth/login");
+  }
+
+  try {
+    jwt.verify(token, process.env.JWT_SECRET!);
+  } catch {
+    redirect("/auth/login");
   }
 
   // récupérer préférences + état sidebar
-  const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
 
   const [sidebarVariant, sidebarCollapsible, contentLayout] = await Promise.all([
@@ -60,7 +67,10 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
           <div className="flex w-full items-center justify-between px-4 lg:px-6">
             <div className="flex items-center gap-1 lg:gap-2">
               <SidebarTrigger className="-ml-1" />
-              <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
+              <Separator
+                orientation="vertical"
+                className="mx-2 data-[orientation=vertical]:h-4"
+              />
             </div>
             <div className="flex items-center gap-2">
               <LayoutControls {...layoutPreferences} />
