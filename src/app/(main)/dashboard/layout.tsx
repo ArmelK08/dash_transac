@@ -25,7 +25,8 @@ import { cookies } from "next/headers";
 export default async function Layout({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  const cookieStore = cookies();
+
+  const cookieStore = await cookies();              // pas de await
   const token = cookieStore.get("token")?.value;
 
   if (!token) {
