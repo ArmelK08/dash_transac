@@ -67,3 +67,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(500).json({ error: "Erreur serveur" });
   }
 }
+
+
+export const config = {
+  api: {
+    responseLimit: false,
+  },
+};
