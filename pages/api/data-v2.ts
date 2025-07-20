@@ -14,6 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const page = Math.max(parseInt(req.query.page as string) || 1, 1);
     const pageSize = Math.min(parseInt(req.query.pageSize as string) || 100, 1000);
+    
+    
+    
     const offset = (page - 1) * pageSize;
 
     const search = (req.query.search as string) || "";
@@ -43,11 +46,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const where = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
     // 🔷 Total count
-    const [[{ total }]] = await db.query(
+    const [result]  = await db.query(
       `SELECT COUNT(*) as total FROM data_v2 ${where}`,
       params
     );
+      const total = (result as any)?.[0].total;
 
+    console.log("✅ total:", total);
     // 🔷 Data page
     const [rows] = await db.query(
       `

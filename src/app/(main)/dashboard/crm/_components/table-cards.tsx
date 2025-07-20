@@ -26,6 +26,30 @@ export function TableCards() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [total, setTotal] = useState(0);
+  const [pageCount, setPageCount] = useState(0);
+
+
+const handleNextPage = () => {
+    setPage((prev) => Math.min(prev + 1, pageCount));
+    
+  };
+  const handlePreviousPage = () => {
+    setPage((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+  };  
+
+  const paginationProps ={
+    page,
+    pageSize,
+    pageCount,
+    handleNextPage,
+    handlePreviousPage,
+    handlePageSizeChange,
+    setPage
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -33,9 +57,12 @@ export function TableCards() {
       const res = await fetch(`/api/data-v2?page=${page}&pageSize=${pageSize}`);
       const json = await res.json();
 
+      console.log("✅ Fetched data:", json);
+
       setData(json.data);
       setTotal(json.total);
       setLoading(false);
+      setPageCount(json.pageCount);
     }
 
     fetchData();
@@ -51,13 +78,8 @@ export function TableCards() {
     data,
     columns: recentLeadsColumns,
     getRowId: (row) => row.id.toString(),
-    pageIndex: page - 1,
-    pageSize,
-    onPaginationChange: ({ pageIndex }) => {
-  setPage(pageIndex + 1);
-},
-    manualPagination: true,
-    pageCount: totalPages,
+    defaultPageSize: pageSize,
+    
   });
 
   if (loading) {
@@ -91,7 +113,7 @@ export function TableCards() {
           <div className="overflow-hidden rounded-md border">
             <DataTable table={table} columns={recentLeadsColumns} />
           </div>
-          <DataTablePagination table={table} />
+          <DataTablePagination table={table} {...paginationProps} />
         </CardContent>
       </Card>
     </div>
