@@ -86,7 +86,7 @@ const handleNextPage = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Chargement des données…</CardTitle>
+          <CardTitle>Chargement des données...</CardTitle>
         </CardHeader>
       </Card>
     );
