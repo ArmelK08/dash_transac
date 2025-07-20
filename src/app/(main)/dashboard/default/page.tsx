@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { OverviewCards } from "../crm/_components/overview-cards";
 import { TableCards } from "../crm/_components/table-cards";
-import { TableWithFilters } from "@/components/table/TableWithFilters";
 
 
 
