@@ -55,7 +55,7 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
             variant="outline"
             className="size-8"
             size="icon"
-            onClick={() => table.previousPage()}
+            onClick={() => table.setPageIndex(table.getState().pagination.pageIndex - 1)}
             disabled={!table.getCanPreviousPage()}
           >
             <span className="sr-only">Go to previous page</span>
@@ -65,7 +65,7 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
             variant="outline"
             className="size-8"
             size="icon"
-            onClick={() => table.nextPage()}
+            onClick={() => table.setPageIndex(table.getState().pagination.pageIndex + 1)}
             disabled={!table.getCanNextPage()}
           >
             <span className="sr-only">Go to next page</span>
