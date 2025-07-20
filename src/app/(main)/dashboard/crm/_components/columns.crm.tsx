@@ -87,10 +87,10 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataV2 } from "./crm.config";
 
 export const recentLeadsColumns: ColumnDef<DataV2>[] = [
-  { accessorKey: "id", header: "ID" },
-  { accessorKey: "date", header: "Date" },
-  { accessorKey: "amount", header: "Amount" },
-  { accessorKey: "status", header: "Status" },
-  { accessorKey: "type", header: "Type" },
-  { accessorKey: "feeamount", header: "Fee" },
+  { id: "id", accessorKey: "id", header: "ID" },
+  { id: "date", accessorKey: "date", header: "Date" },
+  { id: "amount", accessorKey: "amount", header: "Amount" },
+  { id: "status", accessorKey: "status", header: "Status" },
+  { id: "type", accessorKey: "type", header: "Type" },
+  { id: "feeamount", accessorKey: "feeamount", header: "Fee" },
 ];

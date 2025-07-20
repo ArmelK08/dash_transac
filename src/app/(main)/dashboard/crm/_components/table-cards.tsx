@@ -20,74 +20,140 @@ import {
 import { recentLeadsColumns } from "./columns.crm";
 import { DataV2 } from "./crm.config";
 
+function SkeletonRow() {
+  return (
+    <tr className="animate-pulse">
+      {recentLeadsColumns.map((col, i) => (
+        <td key={i} className="py-2 px-3">
+          <div
+            className={`
+              h-3
+              rounded
+              bg-gray-200
+              dark:bg-gray-700
+              ${i % 3 === 0 ? "w-1/2" : i % 3 === 1 ? "w-3/4" : "w-full"}
+            `}
+          />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
 export function TableCards() {
   const [data, setData] = useState<DataV2[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [total, setTotal] = useState(0);
   const [pageCount, setPageCount] = useState(0);
 
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/data-v2?page=${page}&pageSize=${pageSize}`);
+      if (!res.ok) throw new Error(`Erreur ${res.status}`);
+      const json = await res.json();
+      setData(json.data);
+      setTotal(json.total);
+      setPageCount(json.pageCount);
+    } catch (e: any) {
+      setError(e.message || "Erreur lors du chargement des données");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-const handleNextPage = () => {
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 60000); // refresh every 60s
+    return () => clearInterval(interval);
+  }, [page, pageSize]);
+
+  const totalPages = useMemo(() => Math.ceil(total / pageSize), [total, pageSize]);
+
+  const handleNextPage = () => {
     setPage((prev) => Math.min(prev + 1, pageCount));
-    
   };
   const handlePreviousPage = () => {
     setPage((prev) => Math.max(prev - 1, 1));
   };
-
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
-  };  
+  };
 
-  const paginationProps ={
+  const paginationProps = {
     page,
     pageSize,
     pageCount,
     handleNextPage,
     handlePreviousPage,
     handlePageSizeChange,
-    setPage
-  }
-
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      const res = await fetch(`/api/data-v2?page=${page}&pageSize=${pageSize}`);
-      const json = await res.json();
-
-      console.log("✅ Fetched data:", json);
-
-      setData(json.data);
-      setTotal(json.total);
-      setLoading(false);
-      setPageCount(json.pageCount);
-    }
-
-    fetchData();
-  }, [page, pageSize]);
-
-  const totalPages = useMemo(() => Math.ceil(total / pageSize), [total, pageSize]);
-
-  console.log("✅ total:", total);
-  console.log("✅ pageSize:", pageSize);
-  console.log("✅ totalPages:", totalPages);
+    setPage,
+  };
 
   const table = useDataTableInstance({
     data,
     columns: recentLeadsColumns,
     getRowId: (row) => row.id.toString(),
     defaultPageSize: pageSize,
-    
   });
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Erreur</CardTitle>
+          <CardDescription className="text-red-600">{error}</CardDescription>
+          <CardAction>
+            <Button onClick={fetchData}>Réessayer</Button>
+          </CardAction>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Chargement des données...</CardTitle>
+          <CardTitle>Chargement des données…</CardTitle>
+          <CardDescription>Veuillez patienter pendant que nous récupérons vos transactions.</CardDescription>
         </CardHeader>
+        <CardContent>
+          <div className="overflow-hidden rounded-md border">
+            <table className="w-full table-fixed border-collapse border border-gray-200">
+              <thead className="bg-muted">
+                <tr>
+                  {recentLeadsColumns.map((col) => {
+                    // Si header est une fonction, on peut l'appeler sans contexte (ou remplacer par id)
+                    const headerContent =
+                      typeof col.header === "function" ? col.id : col.header;
+
+                    return (
+                      <th
+                        key={col.id}
+                        className="border-b p-2 text-left text-sm font-medium text-muted-foreground"
+                      >
+                        {headerContent}
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+
+              <tbody>
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <SkeletonRow key={i} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
       </Card>
     );
   }
@@ -101,7 +167,7 @@ const handleNextPage = () => {
           <CardAction>
             <div className="flex items-center gap-2">
               <DataTableViewOptions table={table} />
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => alert("Export désactivé")}>
                 <Download />
                 <span className="hidden lg:inline">Export</span>
               </Button>
