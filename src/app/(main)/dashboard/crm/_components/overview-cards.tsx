@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton"; // Assure-toi d’avoir un composant Skeleton
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Stats = {
   totalSuccessful: number;
@@ -21,6 +21,9 @@ type Stats = {
   mobileMoneyAmount: number;
 };
 
+const CACHE_KEY = "overviewStatsCache";
+const CACHE_TTL_MS = 5 * 60 * 1000; // cache expire après 5 minutes
+
 export function OverviewCards() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,6 +31,20 @@ export function OverviewCards() {
 
   useEffect(() => {
     let isMounted = true;
+
+    // Lire cache localStorage
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached) as { data: Stats; timestamp: number };
+        if (Date.now() - parsed.timestamp < CACHE_TTL_MS) {
+          setStats(parsed.data);
+          setLoading(false);
+        }
+      } catch {
+        // si erreur JSON, on ignore et on continue
+      }
+    }
 
     async function fetchStats() {
       setLoading(true);
@@ -38,29 +55,31 @@ export function OverviewCards() {
           throw new Error(`Erreur API: ${res.statusText}`);
         }
         const data: Stats = await res.json();
+
         if (isMounted) {
           setStats(data);
+          setLoading(false);
+
+          // Stocker dans localStorage avec timestamp
+          localStorage.setItem(
+            CACHE_KEY,
+            JSON.stringify({ data, timestamp: Date.now() })
+          );
         }
       } catch (err: any) {
         console.error(err);
         if (isMounted) {
           setError("Impossible de charger les statistiques.");
+          setLoading(false);
         }
-      } finally {
-        if (isMounted) setLoading(false);
       }
     }
 
     fetchStats();
-    const interval = setInterval(fetchStats, 60_000); // refresh toutes les 60 sec
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
   }, []);
 
-  if (loading) {
+  if (loading && !stats) {
+    // Affiche loader seulement si on n'a pas déjà de cache
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
@@ -94,7 +113,7 @@ export function OverviewCards() {
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {/* Carte 1 : Successful */}
+      {/* ... le reste du JSX identique ... */}
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Transactions Successful</CardDescription>
@@ -111,8 +130,7 @@ export function OverviewCards() {
           <div className="text-muted-foreground">Nombre total de transactions réussies</div>
         </CardFooter>
       </Card>
-
-      {/* Carte 2 : Failed */}
+      {/* ... autres cartes ... */}
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Transactions Failed</CardDescription>
@@ -130,7 +148,6 @@ export function OverviewCards() {
         </CardFooter>
       </Card>
 
-      {/* Carte 3 : Montant moneyTransfer */}
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Montant moneyTransfer</CardDescription>
@@ -148,7 +165,6 @@ export function OverviewCards() {
         </CardFooter>
       </Card>
 
-      {/* Carte 4 : Montant mobileMoney */}
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Montant mobileMoney</CardDescription>

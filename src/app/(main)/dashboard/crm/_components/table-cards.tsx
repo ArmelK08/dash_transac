@@ -50,6 +50,8 @@ export function TableCards() {
   const [total, setTotal] = useState(0);
   const [pageCount, setPageCount] = useState(0);
 
+  const CACHE_KEY = `tablecards_cache_page_${page}_size_${pageSize}`;
+
   const fetchData = async () => {
     setLoading(true);
     setError(null);
@@ -57,9 +59,20 @@ export function TableCards() {
       const res = await fetch(`/api/data-v2?page=${page}&pageSize=${pageSize}`);
       if (!res.ok) throw new Error(`Erreur ${res.status}`);
       const json = await res.json();
+
       setData(json.data);
       setTotal(json.total);
       setPageCount(json.pageCount);
+
+      // 📝 on stocke dans localStorage
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({
+          data: json.data,
+          total: json.total,
+          pageCount: json.pageCount,
+        })
+      );
     } catch (e: any) {
       setError(e.message || "Erreur lors du chargement des données");
       setData([]);
@@ -69,22 +82,25 @@ export function TableCards() {
   };
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 60000); // refresh every 60s
-    return () => clearInterval(interval);
+    const cached = localStorage.getItem(CACHE_KEY);
+
+    if (cached) {
+      console.log("✅ Données chargées depuis localStorage");
+      const json = JSON.parse(cached);
+      setData(json.data);
+      setTotal(json.total);
+      setPageCount(json.pageCount);
+      setLoading(false);
+    } else {
+      fetchData();
+    }
   }, [page, pageSize]);
 
   const totalPages = useMemo(() => Math.ceil(total / pageSize), [total, pageSize]);
 
-  const handleNextPage = () => {
-    setPage((prev) => Math.min(prev + 1, pageCount));
-  };
-  const handlePreviousPage = () => {
-    setPage((prev) => Math.max(prev - 1, 1));
-  };
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-  };
+  const handleNextPage = () => setPage((prev) => Math.min(prev + 1, pageCount));
+  const handlePreviousPage = () => setPage((prev) => Math.max(prev - 1, 1));
+  const handlePageSizeChange = (size: number) => setPageSize(size);
 
   const paginationProps = {
     page,
@@ -130,7 +146,6 @@ export function TableCards() {
               <thead className="bg-muted">
                 <tr>
                   {recentLeadsColumns.map((col) => {
-                    // Si header est une fonction, on peut l'appeler sans contexte (ou remplacer par id)
                     const headerContent =
                       typeof col.header === "function" ? col.id : col.header;
 
