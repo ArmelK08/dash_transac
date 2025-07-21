@@ -48,16 +48,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const query: any = { partnerCode };
 
-    if (search) {
-      query.$or = [
-        { _id: { $regex: search, $options: "i" } },
-        { type: { $regex: search, $options: "i" } },
-        { status: { $regex: search, $options: "i" } },
-      ];
-    }
+    // if (search) {
+    //   query.$or = [
+    //     { _id: { $regex: search, $options: "i" } },
+    //     { type: { $regex: search, $options: "i" } },
+    //     { status: { $regex: search, $options: "i" } },
+    //   ];
+    // }
 
-    if (status) query.status = status;
-    if (type) query.type = type;
+    const { ObjectId } = require("mongodb");
+
+if (search) {
+  const isObjectId = ObjectId.isValid(search);
+  if (isObjectId) {
+    query._id = new ObjectId(search);
+  } else {
+    query.$or = [
+      { type: { $regex: search, $options: "i" } },
+      { status: { $regex: search, $options: "i" } },
+    ];
+  }
+}
+
+    if (status) query.status = { $regex: `^${status}$`, $options: "i" };
+    if (type) query.type = { $regex: `^${type}$`, $options: "i" };
 
     if (startDate || endDate) {
       query.date = {};

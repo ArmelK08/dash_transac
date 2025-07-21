@@ -65,7 +65,6 @@ export function DataTablePagination<TData>({ table,...paginationProps }: DataTab
             className="size-8"
             size="icon"
             onClick={paginationProps.handlePreviousPage}
-            disabled={!table.getCanPreviousPage()}
           >
             <span className="sr-only">Go to previous page</span>
             <ChevronLeft />
