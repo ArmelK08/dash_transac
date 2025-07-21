@@ -243,7 +243,13 @@ export function TableCards() {
               <option value="moneyTransfer">Money Transfer</option>
               <option value="mobileMoney">Mobile Money</option>
             </select>
-
+  <input
+              type="text"
+              placeholder="Rechercher par ID"
+              className="border rounded px-2 py-1"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
             <DatePickerWithInput
               date={selectedDate}
               setDate={(date) => {

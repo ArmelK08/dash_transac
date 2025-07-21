@@ -28,8 +28,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     // Set HttpOnly cookie
-    res.setHeader("Set-Cookie", `token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax;`);
-
+ res.setHeader(
+    "Set-Cookie",
+    `token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`
+  );
     res.status(200).json({ 
       message: "Connexion réussie",
       partnerCode: user.partnerCode,

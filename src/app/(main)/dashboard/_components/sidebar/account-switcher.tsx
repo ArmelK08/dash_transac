@@ -1,81 +1,97 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { LogOut } from "lucide-react";
 
-import { BadgeCheck, Bell, CreditCard, LogOut } from "lucide-react";
-
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { cn, getInitials } from "@/lib/utils";
+import { getInitials } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-export function AccountSwitcher({
-  users,
-}: {
-  readonly users: ReadonlyArray<{
-    readonly id: string;
-    readonly name: string;
-    readonly email: string;
-    readonly avatar: string;
-    readonly role: string;
-  }>;
-}) {
-  const [activeUser, setActiveUser] = useState(users[0]);
+export function AccountSwitcher() {
+  const [partnerCode, setPartnerCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/me")
+      .then((res) => {
+        if (!res.ok) throw new Error("Non autorisé");
+        return res.json();
+      })
+      .then((data) => {
+        if (data.partnerCode) setPartnerCode(data.partnerCode);
+      })
+      .catch((err) => {
+        console.error("Erreur récupération user", err);
+        router.push("/auth/v2/login");
+      })
+      .finally(() => setLoading(false));
+  }, [router]);
+
   const handleLogout = async () => {
     try {
       const res = await fetch("/api/logout", { method: "POST" });
       if (res.ok) {
-        toast.success("Logged out successfully");
+        toast.success("Déconnecté avec succès");
         router.push("/auth/v2/login");
       } else {
-        toast.error("Failed to log out");
+        toast.error("Échec de la déconnexion");
       }
     } catch (err) {
       console.error(err);
-      toast.error("Network error during logout");
+      toast.error("Erreur réseau pendant la déconnexion");
     }
   };
+
+  if (loading) {
+    return (
+      <Avatar className="size-9 rounded-lg animate-pulse bg-gray-200 dark:bg-gray-700" />
+    );
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Avatar className="size-9 rounded-lg">
-          <AvatarImage src={activeUser.avatar || undefined} alt={activeUser.name} />
-          <AvatarFallback className="rounded-lg">{getInitials(activeUser.name)}</AvatarFallback>
+        <Avatar className="size-9 rounded-lg cursor-pointer">
+          <AvatarFallback className="rounded-lg">
+            {getInitials(partnerCode ?? "Partenaire")}
+          </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="min-w-56 space-y-1 rounded-lg" side="bottom" align="end" sideOffset={4}>
-        {users.map((user) => (
-          <DropdownMenuItem
-            key={user.email}
-            className={cn("p-0", user.id === activeUser.id && "bg-accent/50 border-l-primary border-l-2")}
-            onClick={() => setActiveUser(user)}
-          >
-            <div className="flex w-full items-center justify-between gap-2 px-1 py-1.5">
-              <Avatar className="size-9 rounded-lg">
-                <AvatarImage src={user.avatar || undefined} alt={user.name} />
-                <AvatarFallback className="rounded-lg">{getInitials(user.name)}</AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.name}</span>
-                <span className="truncate text-xs capitalize">{user.role}</span>
-              </div>
+
+      <DropdownMenuContent
+        className="min-w-56 space-y-1 rounded-lg"
+        side="bottom"
+        align="end"
+        sideOffset={4}
+      >
+        <DropdownMenuItem className="p-0">
+          <div className="flex w-full items-center gap-2 px-1 py-1.5">
+            <Avatar className="size-9 rounded-lg">
+              <AvatarFallback className="rounded-lg">
+                {getInitials(partnerCode ?? "Partenaire")}
+              </AvatarFallback>
+            </Avatar>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-semibold">
+                {partnerCode ?? "Partenaire"}
+              </span>
+              <span className="truncate text-xs capitalize">Partenaire</span>
             </div>
-          </DropdownMenuItem>
-        ))}
-       
+          </div>
+        </DropdownMenuItem>
+
         <DropdownMenuItem onClick={handleLogout}>
-              <LogOut />
-              Log out
-            </DropdownMenuItem>
+          <LogOut />
+          <span className="ml-2">Log out</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

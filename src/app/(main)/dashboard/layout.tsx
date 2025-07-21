@@ -76,7 +76,6 @@ export default async function Layout({
             <div className="flex items-center gap-2">
               <LayoutControls {...layoutPreferences} />
               <ThemeSwitcher />
-              <AccountSwitcher users={users} />
             </div>
           </div>
         </header>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Coins, Scale } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,18 +21,31 @@ type Stats = {
   mobileMoneyAmount: number;
 };
 
+type FinancialStats = {
+  totalEncaissement: number;
+  totalReversement: number;
+  solde: number;
+  totalCommission?: number;
+};
+
 const CACHE_KEY = "overviewStatsCache";
-const CACHE_TTL_MS = 5 * 60 * 1000; // cache expire après 5 minutes
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
 
 export function OverviewCards() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [financialStats, setFinancialStats] = useState<FinancialStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const formatAmount = (amount: number) =>
+    amount.toLocaleString("fr-FR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
 
   useEffect(() => {
     let isMounted = true;
 
-    // Lire cache localStorage
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
       try {
@@ -41,32 +54,36 @@ export function OverviewCards() {
           setStats(parsed.data);
           setLoading(false);
         }
-      } catch {
-        // si erreur JSON, on ignore et on continue
-      }
+      } catch {}
     }
 
     async function fetchStats() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/overview-stats");
-        if (!res.ok) {
-          throw new Error(`Erreur API: ${res.statusText}`);
+        const [overviewRes, financialRes] = await Promise.all([
+          fetch("/api/overview-stats"),
+          fetch("/api/financial-stats"),
+        ]);
+
+        if (!overviewRes.ok || !financialRes.ok) {
+          throw new Error("Erreur API");
         }
-        const data: Stats = await res.json();
+
+        const overviewData: Stats = await overviewRes.json();
+        const financialData: FinancialStats = await financialRes.json();
 
         if (isMounted) {
-          setStats(data);
+          setStats(overviewData);
+          setFinancialStats(financialData);
           setLoading(false);
 
-          // Stocker dans localStorage avec timestamp
           localStorage.setItem(
             CACHE_KEY,
-            JSON.stringify({ data, timestamp: Date.now() })
+            JSON.stringify({ data: overviewData, timestamp: Date.now() })
           );
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error(err);
         if (isMounted) {
           setError("Impossible de charger les statistiques.");
@@ -76,13 +93,16 @@ export function OverviewCards() {
     }
 
     fetchStats();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading && !stats) {
-    // Affiche loader seulement si on n'a pas déjà de cache
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
+        {[...Array(8)].map((_, i) => (
           <Card key={i} className="@container/card">
             <CardHeader>
               <Skeleton className="h-4 w-32 mb-2" />
@@ -104,83 +124,83 @@ export function OverviewCards() {
     return <div className="text-red-600 font-semibold">{error}</div>;
   }
 
-  if (!stats) {
+  if (!stats || !financialStats) {
     return <div>Aucune donnée disponible.</div>;
   }
 
-  const formatAmount = (amount: number) =>
-    amount.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const cards = [
+    {
+      description: "Transactions Successful",
+      value: stats.totalSuccessful,
+      badge: "Réussies",
+      icon: <TrendingUp />,
+    },
+    {
+      description: "Transactions Failed",
+      value: stats.totalFailed,
+      badge: "Échouées",
+      icon: <TrendingDown />,
+    },
+    {
+      description: "Montant moneyTransfer",
+      value: `${formatAmount(stats.moneyTransferAmount)} Fcfa`,
+      badge: "Réussies",
+      icon: <TrendingUp />,
+    },
+    {
+      description: "Montant mobileMoney",
+      value: `${formatAmount(stats.mobileMoneyAmount)} Fcfa`,
+      badge: "Réussies",
+      icon: <TrendingUp />,
+    },
+    {
+      description: "Total Encaissement",
+      value: `${formatAmount(financialStats.totalEncaissement)} Fcfa`,
+      badge: "Encaissement",
+      icon: <Wallet />,
+    },
+    {
+      description: "Total Reversement",
+      value: `${formatAmount(financialStats.totalReversement)} Fcfa`,
+      badge: "Reversement",
+      icon: <TrendingDown />,
+    },
+    {
+      description: "Total Commission",
+      value: `${formatAmount(financialStats.totalCommission ?? 0)} Fcfa`,
+      badge: "Commission",
+      icon: <Coins />,
+    },
+    {
+      description: "Solde",
+      value: `${formatAmount(financialStats.solde)} Fcfa`,
+      badge: "Solde",
+      icon: <Scale />,
+    },
+  ];
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {/* ... le reste du JSX identique ... */}
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Transactions Successful</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {stats.totalSuccessful}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <TrendingUp /> Réussies
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="text-muted-foreground">Nombre total de transactions réussies</div>
-        </CardFooter>
-      </Card>
-      {/* ... autres cartes ... */}
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Transactions Failed</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {stats.totalFailed}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <TrendingDown /> Échouées
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="text-muted-foreground">Nombre total de transactions échouées</div>
-        </CardFooter>
-      </Card>
-
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Montant moneyTransfer</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {formatAmount(stats.moneyTransferAmount)} Fcfa
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <TrendingUp /> Réussies
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="text-muted-foreground">Total des montants moneyTransfer réussis</div>
-        </CardFooter>
-      </Card>
-
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Montant mobileMoney</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {formatAmount(stats.mobileMoneyAmount)} Fcfa
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <TrendingUp /> Réussies
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="text-muted-foreground">Total des montants mobileMoney réussis</div>
-        </CardFooter>
-      </Card>
+      {cards.map((card, idx) => (
+        <Card key={idx} className="@container/card">
+          <CardHeader className="flex flex-col gap-1">
+            <div className="flex justify-between items-start w-full">
+              <CardDescription>{card.description}</CardDescription>
+              <CardAction>
+                <Badge variant="outline">
+                  {card.icon} {card.badge}
+                </Badge>
+              </CardAction>
+            </div>
+            <CardTitle className="text-xl font-semibold tabular-nums break-words @[250px]/card:text-3xl">
+              {card.value}
+            </CardTitle>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm text-muted-foreground">
+            {/* tu peux ajouter un sous-texte ici si besoin */}
+          </CardFooter>
+        </Card>
+      ))}
     </div>
   );
 }
