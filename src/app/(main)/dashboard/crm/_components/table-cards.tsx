@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
-import { useDataTableInstance } from "@/hooks/use-data-table-instance";
-
+import { useEffect, useState, useMemo } from "react";
+import { format } from "date-fns";
 import { Download } from "lucide-react";
+import { useDataTableInstance } from "@/hooks/use-data-table-instance";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
@@ -16,7 +16,8 @@ import {
   CardDescription,
   CardAction,
 } from "@/components/ui/card";
-
+import { DatePickerWithInput } from "@/components/ui/DatePickerWithInput";
+import type { CellContext } from "@tanstack/react-table";
 import { recentLeadsColumns } from "./columns.crm";
 import { DataV2 } from "./crm.config";
 
@@ -36,52 +37,44 @@ function SkeletonRow() {
   );
 }
 
+// Ici on accepte aussi null et undefined, et on renvoie "" si date invalide
+function formatDate(date?: string | Date | null) {
+  if (!date) return "";
+  try {
+    return format(new Date(date), "dd/MM/yyyy HH:mm:ss");
+  } catch {
+    return date.toString();
+  }
+}
+
 export function TableCards() {
   const [data, setData] = useState<DataV2[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState(50);
   const [total, setTotal] = useState(0);
   const [pageCount, setPageCount] = useState(0);
 
   const [status, setStatus] = useState("");
   const [type, setType] = useState("");
-
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
 
-  const CACHE_KEY = `tablecards_cache_page_${page}_size_${pageSize}_status_${status}_type_${type}_search_${search}`;
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
-  // Ref pour préchargement
-  const prefetchingRef = useRef(false);
-  const preloadedPages = useRef<Map<number, DataV2[]>>(new Map());
+  const [exporting, setExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportDone, setExportDone] = useState(false);
 
-  // Fetch data depuis API ou cache localStorage, ou depuis préchargé en mémoire
+  const getCacheKey = () =>
+    `transactions_${page}_${pageSize}_${status}_${type}_${search}_${selectedDate?.toISOString()}`;
+
   const fetchData = async () => {
     setLoading(true);
     setError(null);
 
-    // Si on a la page en mémoire préchargée, on l'utilise directement
-    if (preloadedPages.current.has(page)) {
-      setData(preloadedPages.current.get(page)!);
-      setLoading(false);
-      return;
-    }
-
-    // Sinon on tente le cache localStorage
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
-      const json = JSON.parse(cached);
-      setData(json.data);
-      setTotal(json.total);
-      setPageCount(json.pageCount);
-      setLoading(false);
-      return;
-    }
-
-    // Sinon on fetch depuis API
     try {
       const queryParams = new URLSearchParams({
         page: page.toString(),
@@ -90,6 +83,7 @@ export function TableCards() {
       if (status) queryParams.append("status", status);
       if (type) queryParams.append("type", type);
       if (search) queryParams.append("search", search);
+      if (selectedDate) queryParams.append("date", selectedDate.toISOString());
 
       const res = await fetch(`/api/data-v2?${queryParams.toString()}`);
       if (!res.ok) throw new Error(`Erreur ${res.status}`);
@@ -98,15 +92,6 @@ export function TableCards() {
       setData(json.data);
       setTotal(json.total);
       setPageCount(json.pageCount);
-
-      localStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({
-          data: json.data,
-          total: json.total,
-          pageCount: json.pageCount,
-        })
-      );
     } catch (e: any) {
       setError(e.message || "Erreur lors du chargement des données");
       setData([]);
@@ -115,52 +100,50 @@ export function TableCards() {
     }
   };
 
-  // Préchargement progressif des pages suivantes en arrière-plan
-  const preloadPages = () => {
-    if (prefetchingRef.current) return;
-    prefetchingRef.current = true;
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      setExportProgress(0);
 
-    const loadPage = async (p: number) => {
-      if (p > pageCount || preloadedPages.current.has(p)) {
-        if (p > pageCount) prefetchingRef.current = false;
-        return;
-      }
+      const params = new URLSearchParams({
+        export: "true",
+        status,
+        type,
+        search,
+      });
+      if (selectedDate) params.append("date", selectedDate.toISOString());
 
-      try {
-        const queryParams = new URLSearchParams({
-          page: p.toString(),
-          pageSize: pageSize.toString(),
-        });
-        if (status) queryParams.append("status", status);
-        if (type) queryParams.append("type", type);
-        if (search) queryParams.append("search", search);
+      const res = await fetch(`/api/data-v2?${params.toString()}`);
+      if (!res.ok) throw new Error(`Erreur ${res.status}`);
 
-        const res = await fetch(`/api/data-v2?${queryParams.toString()}`);
-        if (!res.ok) throw new Error(`Erreur ${res.status}`);
-        const json = await res.json();
-
-        preloadedPages.current.set(p, json.data);
-
-        if (p < pageCount) {
-          setTimeout(() => loadPage(p + 1), 200); // délai entre pages
-        } else {
-          prefetchingRef.current = false;
-        }
-      } catch (err) {
-        console.error(`Erreur préchargement page ${p}`, err);
-        prefetchingRef.current = false;
-      }
-    };
-
-    setTimeout(() => loadPage(page + 1), 2000); // commence après 2s, page courante prioritaire
+      const blob = await res.blob();
+      downloadBlob(blob);
+      setExportDone(true);
+      setTimeout(() => setExportDone(false), 3000);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur pendant l’export.");
+    } finally {
+      setExporting(false);
+    }
   };
 
-  // Effet de fetch data à chaque changement d’état
+  function downloadBlob(blob: Blob) {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "transactions_export.zip";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
   useEffect(() => {
     fetchData();
-  }, [page, pageSize, status, type, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, status, type, search, selectedDate]);
 
-  // Effet debounce recherche
   useEffect(() => {
     const timeout = setTimeout(() => {
       setPage(1);
@@ -169,12 +152,21 @@ export function TableCards() {
     return () => clearTimeout(timeout);
   }, [searchInput]);
 
-  // Effet pour lancer préchargement quand la page courante est chargée
-  useEffect(() => {
-    if (!loading && pageCount > 0) {
-      preloadPages();
+  const filteredData = useMemo(() => {
+    const lower = searchInput.toLowerCase().trim();
+    if (!lower) return data;
+
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(lower);
+
+    if (isObjectId) {
+      const exact = data.find((item) => item.id.toString() === lower);
+      return exact ? [exact] : [];
+    } else {
+      return data.filter((item) =>
+        item.id.toString().toLowerCase().includes(lower)
+      );
     }
-  }, [loading, page, pageCount, status, type, search]);
+  }, [data, searchInput]);
 
   const paginationProps = {
     page,
@@ -187,8 +179,16 @@ export function TableCards() {
   };
 
   const table = useDataTableInstance({
-    data,
-    columns: recentLeadsColumns,
+    data: filteredData,
+    columns: recentLeadsColumns.map((col) =>
+      col.id === "date"
+        ? {
+            ...col,
+            cell: ({ row }: CellContext<DataV2, unknown>) =>
+              row.original.date ? formatDate(row.original.date) : "",
+          }
+        : col
+    ),
     getRowId: (row) => row.id.toString(),
     defaultPageSize: pageSize,
   });
@@ -207,56 +207,15 @@ export function TableCards() {
     );
   }
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Chargement des données…</CardTitle>
-          <CardDescription>
-            Veuillez patienter pendant que nous récupérons vos transactions.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-hidden rounded-md border">
-            <table className="w-full table-fixed border-collapse border border-gray-200">
-              <thead className="bg-muted">
-                <tr>
-                  {recentLeadsColumns.map((col) => {
-                    const headerContent =
-                      typeof col.header === "function" ? col.id : col.header;
-
-                    return (
-                      <th
-                        key={col.id}
-                        className="border-b p-2 text-left text-sm font-medium text-muted-foreground"
-                      >
-                        {headerContent}
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-
-              <tbody>
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <SkeletonRow key={i} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:shadow-xs">
       <Card>
         <CardHeader>
           <CardTitle>Transactions</CardTitle>
-          <CardDescription>Suivez et gérez vos transactions et leur statut.</CardDescription>
+          <CardDescription>
+            Suivez et gérez vos transactions et leur statut.
+          </CardDescription>
 
-          {/* FILTRES */}
           <div className="flex flex-wrap gap-2 mb-4">
             <select
               className="border rounded px-2 py-1"
@@ -285,20 +244,39 @@ export function TableCards() {
               <option value="mobileMoney">Mobile Money</option>
             </select>
 
-            <input
-              type="text"
-              placeholder="Rechercher par ID ou status"
-              className="border rounded px-2 py-1"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
+            <DatePickerWithInput
+              date={selectedDate}
+              setDate={(date) => {
+                setPage(1);
+                setSelectedDate(date ?? undefined);
+              }}
             />
+            {selectedDate && (
+              <button
+                onClick={() => setSelectedDate(undefined)}
+                className="ml-2 text-sm text-red-500 underline"
+              >
+                Réinitialiser
+              </button>
+            )}
           </div>
 
           <CardAction>
             <div className="flex items-center gap-2">
               <DataTableViewOptions table={table} />
-              <Button variant="outline" size="sm" onClick={() => alert("Export désactivé")}>
-                <Download /> Export
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={exporting}
+                onClick={handleExport}
+              >
+                {!exporting ? (
+                  <>
+                    <Download className="inline mr-1" /> Export
+                  </>
+                ) : (
+                  <>Export en cours... {exportProgress}%</>
+                )}
               </Button>
             </div>
           </CardAction>
