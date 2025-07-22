@@ -59,7 +59,7 @@ export function LayoutControls(props: LayoutControlsProps) {
             <p className="text-muted-foreground text-xs">Customize your dashboard layout preferences.</p>
           </div>
           <div className="space-y-3">
-            <div className="space-y-1">
+            {/* <div className="space-y-1">
               <Label className="text-xs font-medium">Preset</Label>
               <Select value={themePreset} onValueChange={(value) => handleValueChange("theme_preset", value)}>
                 <SelectTrigger size="sm" className="w-full text-xs">
@@ -79,7 +79,7 @@ export function LayoutControls(props: LayoutControlsProps) {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
 
             <div className="space-y-1">
               <Label className="text-xs font-medium">Mode</Label>

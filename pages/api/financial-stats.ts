@@ -108,13 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 🧾 solde
-      const solde =
-      totalMobileMoney -
-      totalMoneyTransfer -
-      totalFeeAmount +
-      totalEncaissement -
-      totalReversement;
-
+      const solde =totalMobileMoney-totalMoneyTransfer-totalFeeAmount+totalEncaissement+totalReversement;
 
     res.status(200).json({
       partnerCode,

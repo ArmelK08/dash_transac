@@ -161,7 +161,7 @@ export function OverviewCards() {
     },
     {
       description: "Total Reversement",
-      value: `${formatAmount(financialStats.totalReversement)} Fcfa`,
+      value: `${formatAmount(financialStats.totalReversement*(-1))} Fcfa`,
       badge: "Reversement",
       icon: <TrendingDown />,
     },
